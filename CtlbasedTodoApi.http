@@ -1,0 +1,6 @@
+@CtlbasedTodoApi_HostAddress = http://localhost:5063
+
+GET {{CtlbasedTodoApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
