@@ -5,11 +5,13 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CtlbasedTodoApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TodoItemsController : ControllerBase
     {
         private readonly TodoContext _context;
@@ -111,6 +113,7 @@ namespace CtlbasedTodoApi.Controllers
         }
 
         [HttpPost("registerAdmin")]
+        [AllowAnonymous]
         public async Task<ActionResult<Users>> Register(Users user)
         {
             var admin = new Users { Email = user.Email, PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash) };
@@ -121,6 +124,7 @@ namespace CtlbasedTodoApi.Controllers
         }
 
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<ActionResult<string>> Login(Users user)
         {
             var admin = await _context.Users.SingleOrDefaultAsync(user => user.Email == user.Email);
@@ -154,7 +158,8 @@ namespace CtlbasedTodoApi.Controllers
             {
                 Subject = new ClaimsIdentity(new[] { new Claim("id", user.Id.ToString()) }),
                 Expires = DateTime.Now.AddDays(1),
-                SigningCredentials = credentials
+                SigningCredentials = credentials,
+                Issuer = "FRAUD_SERVER"
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();
