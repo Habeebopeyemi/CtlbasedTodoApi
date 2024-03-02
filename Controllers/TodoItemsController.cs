@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CtlbasedTodoApi.Models;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace CtlbasedTodoApi.Controllers
 {
@@ -99,9 +103,50 @@ namespace CtlbasedTodoApi.Controllers
             return NoContent();
         }
 
+        [HttpPost("registerAdmin")]
+        public async Task<ActionResult<Users>> Register(Users user)
+        {
+            var admin = new Users { Email = user.Email, PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash) };
+            _context.Users.Add(admin);
+            await _context.SaveChangesAsync();
+
+            return Ok("admin created successfully");
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult<string>> Login(Users user)
+        {
+            var admin = await _context.Users.SingleOrDefaultAsync(user => user.Email == user.Email);
+            if(user == null || !BCrypt.Net.BCrypt.Verify(user.PasswordHash, admin.PasswordHash))
+            {
+                return Unauthorized();
+            }
+
+            var authToken = GenerateJwtToken(admin);
+            return Ok(authToken);
+        }
+
         private bool TodoItemExists(long id)
         {
             return _context.TodoItems.Any(e => e.Id == id);
+        }
+
+        private string GenerateJwtToken(Users user)
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("OWLETTEAMSECURITYKEYISINSAFEHANDS"));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256Signature);
+
+            var tokenDetails = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[] { new Claim("id", user.Id.ToString()) }),
+                Expires = DateTime.Now.AddDays(1),
+                SigningCredentials = credentials
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDetails);
+
+            return tokenHandler.WriteToken(token);
         }
     }
 }
